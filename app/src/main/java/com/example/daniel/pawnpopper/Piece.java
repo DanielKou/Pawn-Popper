@@ -12,10 +12,12 @@ public class Piece {
     private Type type;
     private ImageView icon;
 
+    // factory for generating random piece
     public Piece(Context context) {
         icon = new ImageView(context);
         icon.setOnTouchListener(new myTouchListener());
 
+        // bigger number for more randomness lol
         int pieceType = (int) (Math.random()*1000) % 5;
         switch (pieceType) {
             case 0:
@@ -41,6 +43,37 @@ public class Piece {
         }
     }
 
+    // generates a set piece, for when resuming a saved state
+    public Piece(Context context, char pieceType){
+        icon = new ImageView(context);
+        icon.setOnTouchListener(new myTouchListener());
+
+        switch (pieceType - '0') {
+            case 0:
+                type = Type.king;
+                icon.setBackgroundResource(R.drawable.king);
+                break;
+            case 1:
+                type = Type.queen;
+                icon.setBackgroundResource(R.drawable.queen);
+                break;
+            case 2:
+                type = Type.knight;
+                icon.setBackgroundResource(R.drawable.knight);
+                break;
+            case 3:
+                type = Type.rook;
+                icon.setBackgroundResource(R.drawable.rook);
+                break;
+            case 4:
+                type = Type.bishop;
+                icon.setBackgroundResource(R.drawable.bishop);
+                break;
+        }
+    }
+
+    // GETTERS ===============================================
+
     public ImageView getIcon() {
         return icon;
     }
@@ -49,11 +82,9 @@ public class Piece {
         return type;
     }
 
-    public boolean checkMove(String oldPos, String newPos){
+    // =========================================================
 
-        return false;
-    }
-
+    // checks move of a piece (same as regular chess piece)
     public boolean checkMove(int oldX, int oldY, int newX, int newY){
         switch (type){
             case king:

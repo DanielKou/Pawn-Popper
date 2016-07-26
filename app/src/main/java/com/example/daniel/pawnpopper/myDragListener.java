@@ -1,11 +1,8 @@
 package com.example.daniel.pawnpopper;
 
-import android.util.Log;
 import android.view.DragEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.os.Handler;
 
 /**
  * Created by Daniel on 2016-06-26.

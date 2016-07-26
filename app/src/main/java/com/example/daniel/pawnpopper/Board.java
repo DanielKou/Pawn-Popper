@@ -4,7 +4,6 @@ import android.content.Context;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 
 /**
@@ -25,6 +24,26 @@ public class Board {
         pieces = new Piece[ROWS][COLUMNS];
     }
 
+    // create board w/ random pieces
+    public void createBoard(){
+        for (int i = 0; i < ROWS; i++){
+            for (int j = 0; j < COLUMNS; j++){
+                pieces[i][j] = new Piece(context);
+            }
+        }
+        resolveClusters(false);
+    }
+
+    // recreate board from saved state
+    public void createBoard(String state){
+        for (int i = 0; i < ROWS; i++){
+            for (int j = 0; j < COLUMNS; j++){
+                pieces[i][j] = new Piece(context, state.charAt(i*ROWS + j));
+            }
+        }
+    }
+
+    // adds views to main container
     public void draw(View parent) {
         for (int i = 0; i < ROWS; i++) {
             LinearLayout row = new LinearLayout(context);
@@ -52,18 +71,10 @@ public class Board {
         }
     }
 
-    public void createBoard(){
-        // create board
-        for (int i = 0; i < ROWS; i++){
-            for (int j = 0; j < COLUMNS; j++){
-                pieces[i][j] = new Piece(context);
-            }
-        }
 
-        resolveClusters(false);
-
-    }
-
+    // searches board for clusters of size 3+. If found, will pop them and call shift to generate additional pieces
+    // recurses as long as clusters are found, in case the shift created more
+    // Pop is boolean because this func is used in initialization to remove any clusters without popping
     public void resolveClusters(boolean pop){
         boolean clusterFound = false;
         // check horizontal clusters
@@ -88,12 +99,14 @@ public class Board {
                 }
 
                 if (checkCluster){
+                    // if cluster found
                     if (clusterLen >= 3){
                         clusterFound = true;
 
                         if (pop){
                             popAndShift(j, i, clusterLen, 'h');
                         }
+                        // attempt to resolve cluster by moving one piece away (during init)
                         else {
                             int swapPiece;
                             int swapDir;
@@ -103,8 +116,10 @@ public class Board {
                                 swapDir = (((int) (Math.random() * 100) % 2) == 0) ? -1 : 1;
                                 int a = 0;
                             }
+                            // take advantage of short circuiting to restart loop if out of bounds
                             while ((!inBounds(swapPiece)) || (!inBounds(i + swapDir)) || madeCluster(swapPiece, i, swapPiece, i + swapDir, true));
 
+                            // DEBUG
                             System.out.println("MOVE " + swapPiece + "|" + i + " TO " + swapPiece + "|" + (i + swapDir));
                         }
                     }
@@ -135,12 +150,14 @@ public class Board {
                 }
 
                 if (checkCluster){
+                    // if cluster found
                     if (clusterLen >= 3){
                         clusterFound = true;
 
                         if (pop){
                             popAndShift(i, j, clusterLen, 'v');
                         }
+                        // attempt to resolve cluster by moving one piece away (during init)
                         else {
                             int swapPiece;
                             int swapDir;
@@ -150,8 +167,10 @@ public class Board {
                                 swapDir = (((int) (Math.random() * 100) % 2) == 0) ? -1 : 1;
                                 int a = 0;
                             }
+                            // take advantage of short circuiting to restart loop if out of bounds
                             while ((!inBounds(swapPiece)) || (!inBounds(i + swapDir)) || madeCluster(i, swapPiece, i + swapDir, swapPiece, true));
 
+                            // DEBUG
                             System.out.println("MOVE " + i + "|" + swapPiece + " TO " + (i + swapDir) + "|" + swapPiece);
                         }
                     }
@@ -160,14 +179,13 @@ public class Board {
             }
         }
 
-
-
         // recurse until no clusters
         if (clusterFound){
             resolveClusters(pop);
         }
     }
 
+    // checks if move is valid for piece
     public boolean checkMove(String oldPos, String newPos){
         if (oldPos.equals(newPos)) {
             return false;
@@ -181,6 +199,35 @@ public class Board {
         return (pieces[oldY][oldX].checkMove(oldX, oldY, newX, newY) && madeCluster(oldX, oldY, newX, newY, false));
     }
 
+    // writes board to string for saving state
+    public String saveState(){
+        String state = "";
+        for (int i = 0; i < ROWS; i++){
+            for (int j = 0; j < COLUMNS; j++){
+                switch(pieces[i][j].getType()){
+                    case king:
+                        state += "0";
+                        break;
+                    case queen:
+                        state += "1";
+                        break;
+                    case knight:
+                        state += "2";
+                        break;
+                    case rook:
+                        state += "3";
+                        break;
+                    case bishop:
+                        state += "4";
+                        break;
+                }
+            }
+        }
+        return state;
+    }
+
+
+    // pops a cluster and calls shift to move all pieces above the resulting empty spaces down
     private void popAndShift(int x, int y, int clusterLen, char direction){
         if (direction == 'v'){
             int i;
@@ -201,9 +248,9 @@ public class Board {
         }
     }
 
+    // shifts pieces down over the resulting empty spaces
     private void shift (int column, int startingRow, int amount){
         while (startingRow >= 0){
-            // swap(int oldX, int oldY, int newX, int newY)
             grid[startingRow][column].removeView(grid[startingRow][column].getChildAt(0));
             grid[startingRow + amount][column].addView(pieces[startingRow][column].getIcon());
             swap(column, startingRow, column, startingRow + amount);
@@ -211,6 +258,7 @@ public class Board {
         }
     }
 
+    // generates new pieces after a shift has occurred
     private void renewPieces(int column){
         int i = 0;
         while(pieces[i][column] == null){
@@ -220,6 +268,10 @@ public class Board {
         }
     }
 
+    // checks if moving a piece from old to new will make a cluster
+    // boolean swapBack also used during init and gameplay stages
+    // we swap back during game play since it's not valid to move to a non-cluster spot
+    // and don't swap back during init because we don't want resulting clusters
     private boolean madeCluster(int oldX, int oldY, int newX, int newY, boolean swapBack){
         if (pieces[oldY][oldX].getType() == pieces[newY][newX].getType()){
             return true;
@@ -230,8 +282,6 @@ public class Board {
         boolean a = checkHandV(newX, newY);
         boolean b = checkHandV(oldX, oldY);
         boolean clusters = checkHandV(newX, newY) || checkHandV(oldX, oldY);
-
-
 
         if (clusters) {
             if (swapBack){
@@ -245,13 +295,9 @@ public class Board {
             }
             return false;
         }
-
-
     }
 
-
-
-
+    // checks if there are any clusters around the piece [x,y]
     private boolean checkHandV(int x, int y){
         int clusterLen = 1;
         int tempX = x, tempY = y;
@@ -308,6 +354,7 @@ public class Board {
         return false;
     }
 
+    // helper to check boundaries
     private boolean inBounds(int pos){
         if (pos < 0 || pos > 7) {
             return false;
@@ -315,6 +362,7 @@ public class Board {
         return true;
     }
 
+    // helper to swap 2 pieces
     private void swap(int oldX, int oldY, int newX, int newY){
         Piece temp = pieces[oldY][oldX];
         pieces[oldY][oldX] = pieces[newY][newX];
@@ -322,6 +370,7 @@ public class Board {
 
     }
 
+    // DEBUG
     private void printBoard(){
         for (int i = 0; i < COLUMNS; i++){
             for (int j = 0; j < ROWS; j++){
@@ -331,5 +380,4 @@ public class Board {
         }
         System.out.println("\n\n");
     }
-
 }
